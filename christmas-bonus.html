@@ -19,7 +19,7 @@ S.getItem=function(k){if(this===localStorage&&k===LOCK){return n()>=MAX?g.apply(
 S.setItem=function(k,v){if(this===localStorage&&k===LOCK){try{s.call(localStorage,CNT,String(n()+1))}catch(e){}}return s.apply(this,arguments)};
 function left(){return Math.max(0,MAX-n())}
 function fix(root){var w=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT),t;while(t=w.nextNode()){var v=t.nodeValue,o=v;
-v=v.replace(/This demo plays one full round\./,'Subscriber bonus: this demo plays 3 full rounds.').replace(/this is your one full round\./,'subscriber bonus: free round '+Math.min(MAX,n()+1)+' of 3 on this device.').replace(/\(preview — 1 round only\)/,'(free preview round)').replace(/This free demo includes one full live round per device/,'This subscriber demo includes 3 full live rounds per device');
+v=v.replace(/This demo plays one full round\./,'Subscriber bonus: this demo plays 3 full rounds.').replace(/this is your one full round\./,'subscriber bonus: free round '+Math.min(MAX,n()+1)+' of 3 on this device.'+(n()+1<MAX?' When this round ends, refresh the page to start your next one.':' This is your last free round.')).replace(/\(preview — 1 round only\)/,'(free preview round)').replace(/This free demo includes one full live round per device/,'This subscriber demo includes 3 full live rounds per device');
 if(v!==o)t.nodeValue=v;}}
 document.addEventListener('DOMContentLoaded',function(){fix();new MutationObserver(function(m){for(var i=0;i<m.length;i++){var a=m[i].addedNodes;for(var j=0;j<a.length;j++){if(a[j].nodeType===1)fix(a[j]);else if(a[j].nodeType===3&&a[j].parentNode)fix(a[j].parentNode)}}}).observe(document.body,{childList:true,subtree:true,characterData:false});});})();</script>
 
