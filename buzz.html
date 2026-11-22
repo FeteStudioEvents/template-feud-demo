@@ -28,10 +28,16 @@ input{width:100%;font:700 20px Arial;padding:14px;border-radius:12px;border:2px 
 .hide{display:none!important}
 .tb{flex:1;min-width:130px;padding:16px 10px;font:800 18px Arial;border-radius:14px;border:3px solid transparent}
 .tb.sel{border-color:#fff}
+.tb img{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 6px;border:2px solid rgba(255,255,255,.8)}
+#blogo{max-height:64px;max-width:70vw;object-fit:contain;display:block;margin:0 auto 6px}
+.selfie{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px}
+.selfie img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #fff}
+#meimg{width:34px;height:34px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;border:2px solid #fff}
 </style></head>
 <body>
-<div class="top"><div class="brand">Template Feud · Phone buzzer</div><div class="team" id="team"></div><div class="me" id="me"></div></div>
+<div class="top"><img id="blogo" class="hide" alt=""><div class="brand" id="btitle">Template Feud · Phone buzzer</div><div class="team" id="team"></div><div class="me" id="me"></div></div>
 
+<div class="join hide" id="noCode"><div style="font:800 22px Arial">Scan the code on the TV</div><div class="small" style="margin-top:10px">This page opens from the QR code your host shows in Template Feud.</div></div>
 <div class="join" id="joinBox">
   <div style="font:800 24px Arial;margin-bottom:6px">Join the game</div>
   <div class="small" style="margin-bottom:16px">Your phone becomes your team's buzzer.</div>
@@ -40,6 +46,8 @@ input{width:100%;font:700 20px Arial;padding:14px;border-radius:12px;border:2px 
     <button class="tb" data-t="2" style="background:#ff7a8a;color:#3a1018" id="tb2">Team 2</button>
   </div>
   <input id="name" maxlength="16" placeholder="Your first name" autocomplete="given-name" enterkeyhint="go">
+  <div class="selfie hide" id="selfieRow"><img id="selfieImg" class="hide" alt=""><button class="btn ghost" id="selfieBtn" type="button">📷 Add a selfie (optional)</button><button class="btn ghost hide" id="selfieDel" type="button">✕</button><input type="file" id="selfieIn" accept="image/*" capture="user" class="hide"></div>
+  <div class="small hide" id="selfieNote" style="margin-top:6px">Shown on the TV when you buzz in first. Not saved anywhere.</div>
   <button class="btn" id="go" style="width:100%;margin-top:14px;font-size:20px;padding:16px">Join</button>
   <div class="small" id="joinMsg" style="margin-top:14px;min-height:20px"></div>
 </div>
@@ -69,14 +77,17 @@ var $=function(i){return document.getElementById(i);};
 var store=function(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){}return null;};
 var myId=store('fsb_id');if(!myId){myId=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-5);store('fsb_id',myId);}
 var team=P.get('t')==='2'?2:(P.get('t')==='1'?1:+(store('fsb_team_'+CODE)||0));
-var names=['Team 1','Team 2'], myName=store('fsb_name')||'', link=null, joined=false, ended=false, retryT=0, st='idle', lastBuzz=0, wake=null;
+var names=['Team 1','Team 2'], myName=store('fsb_name')||'', link=null, joined=false, ended=false, retryT=0, st='idle', lastBuzz=0, wake=null, wantJoin=false, brand=null, selfiesOK=false;
+var sstore=function(k,v){try{if(v===undefined)return sessionStorage.getItem(k);if(v===null)sessionStorage.removeItem(k);else sessionStorage.setItem(k,v);}catch(e){}return null;};
+var selfie=sstore('fsb_selfie')||null;
+var okImg=function(s){return typeof s==='string'&&s.length<400000&&/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(s);};
 var COLORS={1:'#5bb4ff',2:'#ff7a8a'};
 $('name').value=myName;
-var paintTeams=function(){$('tb1').textContent=names[0];$('tb2').textContent=names[1];$('tb1').classList.toggle('sel',team===1);$('tb2').classList.toggle('sel',team===2);
-  $('team').textContent=joined?names[team-1]:'';$('team').style.color=COLORS[team]||'#fff';document.documentElement.style.setProperty('--tc',COLORS[team]||'#f5b400');};
+var paintTeams=function(){[1,2].forEach(function(n){var b=$('tb'+n),ph=brand&&brand.photos&&okImg(brand.photos[n-1])?brand.photos[n-1]:'';b.innerHTML=(ph?'<img alt="">':'')+'<span></span>';if(ph)b.querySelector('img').src=ph;b.querySelector('span').textContent=names[n-1];});$('tb1').classList.toggle('sel',team===1);$('tb2').classList.toggle('sel',team===2);
+  $('team').textContent=joined?names[team-1]:'';$('me').innerHTML='';if(joined){if(selfie&&selfiesOK){var im=document.createElement('img');im.id='meimg';im.src=selfie;$('me').appendChild(im);}$('me').appendChild(document.createTextNode(myName));}$('team').style.color=COLORS[team]||'#fff';document.documentElement.style.setProperty('--tc',COLORS[team]||'#f5b400');};
 var setStatus=function(t){$('status').textContent=t;};
 var show=function(play){$('joinBox').classList.toggle('hide',play);$('playBox').classList.toggle('hide',!play);$('switch').classList.toggle('hide',!play);};
-if(!CODE){show(false);$('joinBox').innerHTML='<div style="font:800 22px Arial">Scan the code on the TV</div><div class="small" style="margin-top:10px">This page opens from the QR code your host shows in Template Feud.</div>';}
+if(!CODE){show(false);$('joinBox').classList.add('hide');$('noCode').classList.remove('hide');}
 var keepAwake=function(){try{if(navigator.wakeLock&&!wake)navigator.wakeLock.request('screen').then(function(w){wake=w;w.addEventListener('release',function(){wake=null;});}).catch(function(){});}catch(e){}};
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){keepAwake();if(joined&&!link&&!ended)connect();}});
 
@@ -115,10 +126,11 @@ var connect=function(){
   setStatus('Connecting…');
   var me=null;
   me=link=openLink({
-    open:function(){if(me)me.send({k:'hello',id:myId,name:myName,team:team,v:1});},
+    open:function(){if(!me)return;if(wantJoin)me.send(hello());else me.send({k:'peek',v:2});},
     data:function(m){if(!m||typeof m!=='object')return;
       if(m.names){names=m.names;paintTeams();}
-      if(m.k==='welcome'){joined=true;team=m.team;store('fsb_team_'+CODE,String(team));show(true);paintTeams();$('me').textContent=myName;keepAwake();}
+      if(m.k==='brand'){applyBrand(m.brand,m.selfies);}
+      else if(m.k==='welcome'){joined=true;team=m.team;if(m.selfies!==undefined)selfiesOK=!!m.selfies;store('fsb_team_'+CODE,String(team));show(true);paintTeams();keepAwake();}
       else if(m.k==='full'){var other=m.team===1?2:1;joined=false;show(false);paintTeams();$('joinMsg').textContent=names[m.team-1]+' is full ('+5+' phones).'+(m.slots&&m.slots[other-1]>0?' Pick '+names[other-1]+' instead.':' Both teams are full.');try{me&&me.close();}catch(e){}if(link===me)link=null;}
       else if(m.k==='state')applyState(m);
       else if(m.k==='notopen'){$('buzz').classList.remove('pressed');if(st!=='buzzed')setStatus('Not yet! Wait for the face-off.');}
@@ -129,27 +141,42 @@ var connect=function(){
     fail:function(t){if(link===me)link=null;else return;if(ended)return;if(joined)setStatus(errText(t));else $('joinMsg').textContent=errText(t);retryT=setTimeout(connect,t==='nogame'?3000:4000);}
   });
 };
+var hello=function(){return {k:'hello',id:myId,name:myName,team:team,v:2,selfie:selfiesOK?(selfie||null):undefined};};
+var applyBrand=function(b,sOK){
+  if(sOK!==undefined){selfiesOK=!!sOK;$('selfieRow').classList.toggle('hide',!selfiesOK);$('selfieNote').classList.toggle('hide',!selfiesOK);}
+  brand=b&&typeof b==='object'?b:null;var lg=$('blogo');
+  if(brand&&okImg(brand.logo)){lg.src=brand.logo;lg.classList.remove('hide');}else lg.classList.add('hide');
+  $('btitle').textContent=brand&&brand.title?String(brand.title).slice(0,40):'Template Feud · Phone buzzer';
+  var acc=brand&&/^#[0-9a-f]{3,8}$/i.test(brand.accent||'')?brand.accent:'#f5b400',bg=brand&&/^#[0-9a-f]{6}$/i.test(brand.bg||'')?brand.bg:'#1b1430';
+  document.body.style.background=bg;document.documentElement.style.background=bg;$('go').style.background=acc;$('name').style.borderColor=acc;$('btitle').style.color=acc;
+  paintTeams();
+};
+var drawSelfie=function(){var im=$('selfieImg');if(selfie){im.src=selfie;im.classList.remove('hide');$('selfieDel').classList.remove('hide');$('selfieBtn').textContent='📷 Change';}else{im.classList.add('hide');$('selfieDel').classList.add('hide');$('selfieBtn').textContent='📷 Add a selfie (optional)';}};
+$('selfieBtn').addEventListener('click',function(){$('selfieIn').click();});
+$('selfieDel').addEventListener('click',function(){selfie=null;sstore('fsb_selfie',null);drawSelfie();if(joined&&link)link.send(hello());paintTeams();});
+$('selfieIn').addEventListener('change',function(){var f=this.files&&this.files[0];this.value='';if(!f)return;var fr=new FileReader();fr.onload=function(){var im=new Image();im.onload=function(){var s=Math.min(im.width,im.height),c=document.createElement('canvas');c.width=c.height=160;var x=c.getContext('2d');x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,160,160);selfie=c.toDataURL('image/jpeg',0.72);sstore('fsb_selfie',selfie);drawSelfie();if(joined&&link)link.send(hello());paintTeams();};im.src=fr.result;};fr.readAsDataURL(f);});
+drawSelfie();
 var join=function(){
   myName=$('name').value.replace(/\s+/g,' ').trim().slice(0,16);
   if(!myName){$('joinMsg').textContent='Type your name so the host knows who buzzed.';$('name').focus();return;}
   if(!team){$('joinMsg').textContent='Pick your team.';return;}
-  store('fsb_name',myName);$('joinMsg').textContent='Joining…';ended=false;
-  if(link){link.send({k:'hello',id:myId,name:myName,team:team,v:1});}else connect();
+  store('fsb_name',myName);$('joinMsg').textContent='Joining…';ended=false;wantJoin=true;
+  if(link){link.send(hello());}else connect();
 };
 $('go').addEventListener('click',join);
 $('name').addEventListener('keydown',function(e){if(e.key==='Enter')join();});
 $('teamPick').addEventListener('click',function(e){var b=e.target.closest('.tb');if(!b)return;team=+b.getAttribute('data-t');paintTeams();});
-$('switch').addEventListener('click',function(){team=team===1?2:1;if(link)link.send({k:'hello',id:myId,name:myName,team:team,v:1});});
+$('switch').addEventListener('click',function(){team=team===1?2:1;if(link)link.send(hello());});
 var press=function(e){if(e)e.preventDefault();var b=$('buzz');if(b.disabled||!link)return;var now=Date.now();if(now-lastBuzz<250)return;lastBuzz=now;
   b.classList.add('pressed');try{navigator.vibrate&&navigator.vibrate(30);}catch(_){}link.send({k:'buzz'});setStatus('Buzzed!');};
 $('buzz').addEventListener('pointerdown',press);
 $('buzz').addEventListener('keydown',function(e){if(e.key===' '||e.key==='Enter')press(e);});
 paintTeams();
 if(CODE){
-  if(myName&&team){show(true);setStatus('Connecting…');joined=false;connect();}   /* returning player: rejoin straight away */
-  else{show(false);}
+  if(myName&&team){wantJoin=true;show(true);setStatus('Connecting…');joined=false;connect();}   /* returning player: rejoin straight away */
+  else{show(false);connect();}   /* new player: peek at the game first to show the host's logo, team names and photos */
 }
-window.__fsbPhone={state:function(){return {st:st,joined:joined,team:team,ended:ended,status:$('status').textContent,join:$('joinMsg').textContent,btn:$('buzz').className+'|'+$('buzz').disabled};}};
+window.__fsbPhone={brand:function(){return {title:$('btitle').textContent,logo:!$('blogo').classList.contains('hide'),selfieRow:!$('selfieRow').classList.contains('hide'),photos:document.querySelectorAll('.tb img').length,bg:document.body.style.background};},state:function(){return {st:st,joined:joined,team:team,ended:ended,status:$('status').textContent,join:$('joinMsg').textContent,btn:$('buzz').className+'|'+$('buzz').disabled};}};
 })();
 </script>
 </body></html>
